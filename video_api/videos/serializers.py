@@ -4,12 +4,13 @@ import moviepy.editor as mp
 from rest_framework import serializers
 from moviepy.editor import VideoFileClip
 from django.core.exceptions import ValidationError
+from django.conf import settings
 import os
 
 # Define the allowed limits
 MAX_FILE_SIZE = 25 * 1024 * 1024  # 25 MB
 MIN_FILE_SIZE = 5 * 1024 * 1024  # 25 MB
-MIN_DURATION = 2  # 5 seconds
+MIN_DURATION = 2  # 2 seconds
 MAX_DURATION = 25  # 25 seconds
 
 
@@ -18,11 +19,12 @@ class VideoSerializer(serializers.ModelSerializer):
     size = serializers.FloatField(read_only=True)
     duration = serializers.FloatField(read_only=True)
     uploaded_at = serializers.DateTimeField(read_only=True)
+    file_url = serializers.SerializerMethodField(read_only=True)
 
 
     class Meta:
         model = Video
-        fields = ['id', 'title', 'file', 'size', 'duration', 'uploaded_at']
+        fields = ['id', 'title', 'file', 'size', 'duration', 'uploaded_at', 'file_url']
 
     def create(self, validated_data):
         return super().create(validated_data)
@@ -55,3 +57,11 @@ class VideoSerializer(serializers.ModelSerializer):
         # video duration validation
         self.validate_video_duration(value)
         return value
+
+    def get_file_url(self, obj):
+        """Generate the full URL for the video file."""
+        request = self.context.get('request')
+        if request:
+            base_url = request.build_absolute_uri('/')[:-1]  # Remove trailing slash
+            return f"{base_url}{settings.MEDIA_URL}{obj.file.name}"
+        return f"{settings.MEDIA_URL}{obj.file.name}"
